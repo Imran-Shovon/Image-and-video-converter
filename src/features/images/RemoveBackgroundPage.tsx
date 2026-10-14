@@ -54,10 +54,10 @@ export default function RemoveBackgroundPage() {
   const format = chosenFormat(s);
 
   const buildJob: BuildJob = async (item, { signal, onProgress }) => {
-    // The oriented, downscaled preview is plenty for the model's 1024×1024 input; the mask is then
-    // applied to the full-resolution image.
-    const preview = await fetch(item.preview!.url).then((r) => r.blob());
-    const { mask, size } = await backgroundEngine.segment(preview, { signal, onProgress });
+    // Use original pixels when the browser can decode them. The JPEG preview is only a fallback
+    // for formats decoded through WASM, so segmentation does not inherit preview compression.
+    const source = item.originalUrl ? item.file : await fetch(item.preview!.url).then((r) => r.blob());
+    const { mask, size } = await backgroundEngine.segment(source, { signal, onProgress });
     return {
       file: item.file,
       ops: [{ type: 'mask', mask, maskWidth: size, maskHeight: size, background: s.mode === 'color' ? s.color : null }],
@@ -73,6 +73,7 @@ export default function RemoveBackgroundPage() {
       operation="no-background"
       multiple
       actionLabel="Remove background"
+      resultView="result"
       settingsError={settingsError}
       warnings={(item) => (item.probe?.animated ? ['This is an animated image. Only the first frame will be processed.'] : [])}
       buildJob={buildJob}

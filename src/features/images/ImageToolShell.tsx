@@ -55,9 +55,11 @@ export interface ImageToolShellProps {
   /** Validation error message for current settings, which disables processing. */
   settingsError?: string | null;
   offerKeepOriginal?: boolean;
+  /** Background removal shows the whole cutout first; other tools start with comparison. */
+  resultView?: 'compare' | 'result';
 }
 
-export function ImageToolShell({ tool, operation, multiple = false, actionLabel, settings, buildJob, warnings, settingsError, offerKeepOriginal }: ImageToolShellProps) {
+export function ImageToolShell({ tool, operation, multiple = false, actionLabel, settings, buildJob, warnings, settingsError, offerKeepOriginal, resultView = 'compare' }: ImageToolShellProps) {
   const queue = useImageQueue({ multiple, operation });
   const { items, add } = queue;
   const accept = useMemo(() => acceptedImageFormats(), []);
@@ -185,7 +187,7 @@ export function ImageToolShell({ tool, operation, multiple = false, actionLabel,
                   : []),
               ]}
             >
-              <CompareSlider beforeUrl={single.originalUrl ?? single.preview!.url} afterUrl={single.result.url} width={single.result.width} height={single.result.height} />
+              <CompareSlider key={single.result.url} beforeUrl={single.originalUrl ?? single.preview!.url} afterUrl={single.result.url} width={single.result.width} height={single.result.height} initialView={resultView} />
             </ResultCard>
           )}
         </>

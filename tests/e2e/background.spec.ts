@@ -24,9 +24,19 @@ test.describe('remove background', () => {
     await expect(page.getByText(/downloads the BiRefNet-lite AI model/)).toBeVisible();
     // First run downloads ~115 MB and compiles GPU shaders.
     await runTool(page, 540_000);
+    await expect(
+      page.getByRole('img', { name: 'Processed image with background removed' }),
+    ).toBeVisible();
+    await expect(page.getByRole('slider', { name: /Comparison divider/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Compare', exact: true }).click();
+    await expect(page.getByRole('slider', { name: /Comparison divider/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Result', exact: true }).click();
     const { bytes, name } = await download(page);
     expect(name).toBe('subject-no-background.png');
-    const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(bytes)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
     expect([info.width, info.height]).toEqual([800, 600]);
     const alphaAt = (x: number, y: number) => data[(y * info.width + x) * 4 + 3]!;
     expect(alphaAt(400, 330)).toBe(255); // centre of the ball
@@ -44,7 +54,10 @@ test.describe('remove background', () => {
     expect(second.name).toBe('subject-no-background.jpg');
     const flat = await sharp(second.bytes).raw().toBuffer({ resolveWithObject: true });
     expect(flat.info.channels).toBe(3);
-    const px = (x: number, y: number) => Array.from(flat.data.subarray((y * flat.info.width + x) * 3, (y * flat.info.width + x) * 3 + 3));
+    const px = (x: number, y: number) =>
+      Array.from(
+        flat.data.subarray((y * flat.info.width + x) * 3, (y * flat.info.width + x) * 3 + 3),
+      );
     for (const v of px(20, 20)) expect(v).toBeGreaterThan(245); // white background
     expect(px(400, 330)[0]).toBeGreaterThan(150); // red ball kept
   });
