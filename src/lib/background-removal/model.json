@@ -1,0 +1,21 @@
+{
+  "name": "BiRefNet-lite",
+  "license": "MIT",
+  "source": "https://huggingface.co/onnx-community/BiRefNet_lite-ONNX",
+  "revision": "de15b22ba131738a16dff04aab8bdf8dc32e3ac1",
+  "patchVersion": 1,
+  "dir": "models/birefnet-lite-de15b22-p1",
+  "inputSize": 1024,
+  "variants": {
+    "fp16": {
+      "remote": "onnx/model_fp16.onnx",
+      "sha256": "d39b897ceb16ae654c1731f3dba0cf9b368d9cae74b5a57459b455cc8bfec402",
+      "file": "model_fp16.onnx"
+    },
+    "fp32": {
+      "remote": "onnx/model.onnx",
+      "sha256": "5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333",
+      "file": "model_fp32.onnx"
+    }
+  }
+}

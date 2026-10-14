@@ -1,0 +1,13 @@
+node_modules
+dist
+public/ffmpeg
+public/models
+.cache
+tests/fixtures/generated
+test-results
+test-results-all.txt
+playwright-report
+coverage
+*.local
+.env
+.DS_Store
