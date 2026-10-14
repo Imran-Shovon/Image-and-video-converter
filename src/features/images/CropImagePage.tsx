@@ -183,7 +183,7 @@ export default function CropImagePage() {
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined} step={item?.result ? 3 : item ? 2 : 1} sourceFile={item?.file}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={item?.result ? 3 : item?.probe ? 2 : 1} sourceFile={item?.file} upload={{ accept: acceptedImageFormats(), onFiles: add, disabled: processing }}>
       {!item && <UploadZone accept={acceptedImageFormats()} onFiles={add} allowPaste />}
       {item && (
         <Card className="flex flex-col gap-4">

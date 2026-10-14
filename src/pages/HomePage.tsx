@@ -62,6 +62,8 @@ export default function HomePage() {
   const [detected, setDetected] = useState<ValidatedFile | null>(null);
   const [error, setError] = useState<MediaError | null>(null);
   const [checking, setChecking] = useState(false);
+  const [selectedStep, setSelectedStep] = useState<1 | 2>(2);
+  const showActions = detected !== null && selectedStep === 2;
   const request = useRef(0);
   const choiceRef = useRef<HTMLHeadingElement>(null);
   const accept = useMemo(() => [...acceptedImageFormats(), ...acceptedVideoFormats()], []);
@@ -71,8 +73,8 @@ export default function HomePage() {
     document.title = 'Media Toolkit — Image & Video Tools';
   }, []);
   useEffect(() => {
-    if (detected) choiceRef.current?.focus({ preventScroll: true });
-  }, [detected]);
+    if (showActions) choiceRef.current?.focus({ preventScroll: true });
+  }, [showActions]);
 
   const onFiles = async (files: File[]) => {
     if (!files[0]) return;
@@ -81,7 +83,10 @@ export default function HomePage() {
     setChecking(true);
     try {
       const media = await validateFile(files[0], { accept, limits });
-      if (id === request.current) setDetected(media);
+      if (id === request.current) {
+        setDetected(media);
+        setSelectedStep(2);
+      }
     } catch (e) {
       if (id === request.current) setError(toMediaError(e));
     } finally {
@@ -95,7 +100,10 @@ export default function HomePage() {
     const id = ++request.current;
     void validateFile(file, { accept, limits })
       .then((media) => {
-        if (id === request.current) setDetected(media);
+        if (id === request.current) {
+          setDetected(media);
+          setSelectedStep(2);
+        }
       })
       .catch((e: unknown) => {
         if (id === request.current) setError(toMediaError(e));
@@ -111,22 +119,36 @@ export default function HomePage() {
   return (
     <div className="home-page mx-auto w-full max-w-6xl px-4 sm:px-6">
       <section className="home-intro">
-        <p className="home-step-label">Step {detected ? '2' : '1'} of 3</p>
-        <h1>{detected ? 'Choose an action for your file' : 'Upload an image or video'}</h1>
+        <p className="home-step-label">Step {showActions ? '2' : '1'} of 3</p>
+        <h1>{showActions ? 'Choose an action for your file' : 'Upload an image or video'}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-          {detected
+          {showActions
             ? 'Select a tool below, adjust its settings, then download your finished file.'
             : 'Start with a file. Then choose to convert, compress, resize, or edit it.'}
         </p>
       </section>
       <div className="mx-auto max-w-4xl">
-        <WorkflowSteps current={detected ? 2 : 1} />
+        <WorkflowSteps
+          current={showActions ? 2 : 1}
+          availableThrough={detected ? 2 : 1}
+          onSelect={(step) => {
+            if (step !== 3 && (step === 1 || detected)) setSelectedStep(step);
+          }}
+        />
         <section
           className="upload-workspace"
-          aria-label={detected ? 'Choose an action for your file' : 'Upload your media'}
+          aria-label={showActions ? 'Choose an action for your file' : 'Upload your media'}
         >
-          {!detected ? (
+          {!showActions ? (
             <>
+              {detected && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-accent-soft p-3 text-sm">
+                  <span className="min-w-0 break-all">Selected: {detected.file.name}</span>
+                  <Button size="sm" onClick={() => setSelectedStep(2)}>
+                    Continue with this file
+                  </Button>
+                </div>
+              )}
               <div className="workspace-caption">
                 <span>Select a file to get started</span>
                 <LockKeyhole className="size-4" aria-label="Private processing" />

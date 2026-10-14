@@ -144,6 +144,24 @@ body {
   background: var(--border);
   margin: 0 16px 0 7px;
 }
+.workflow-steps button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+.workflow-steps button:enabled:hover,
+.workflow-steps button[aria-current='step'] {
+  background: var(--accent-soft);
+}
+.workflow-steps button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .step-number {
   display: flex;
   width: 26px;
@@ -304,6 +322,10 @@ body {
   .workflow-steps li {
     gap: 5px;
     font-size: 10px;
+  }
+  .workflow-steps button {
+    gap: 5px;
+    padding-inline: 2px;
   }
   .workflow-steps li + li::before {
     margin-left: 3px;

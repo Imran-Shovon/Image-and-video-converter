@@ -120,7 +120,7 @@ export function ImageToolShell({ tool, operation, multiple = false, actionLabel,
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : items.length > 0 ? 2 : 1} sourceFile={items[0]?.file}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : ready.length > 0 ? 2 : 1} sourceFile={items[0]?.file} upload={{ accept, multiple, onFiles: add, disabled: processing }}>
       {queue.notice && <ErrorAlert error={queue.notice} />}
       {items.length === 0 && <UploadZone accept={accept} multiple={multiple} onFiles={add} allowPaste />}
 

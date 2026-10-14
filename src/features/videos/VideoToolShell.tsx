@@ -158,7 +158,7 @@ export function VideoToolShell(props: VideoToolShellProps) {
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : items.length > 0 ? 2 : 1} sourceFile={items[0]?.file}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : items.some((it) => it.probe) ? 2 : 1} sourceFile={items[0]?.file} upload={{ accept, multiple, onFiles: add, disabled: processing }}>
       {queue.notice && <ErrorAlert error={queue.notice} />}
       {items.length === 0 && <UploadZone accept={accept} multiple={multiple} onFiles={add} title={multiple ? 'Drop videos here' : 'Drop a video here'} />}
 

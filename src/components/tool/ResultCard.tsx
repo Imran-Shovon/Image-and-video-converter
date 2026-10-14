@@ -34,7 +34,7 @@ export function ResultCard({ blob, filename, originalFile, details, notes = [], 
   const canShare = typeof navigator !== 'undefined' && 'canShare' in navigator;
 
   return (
-    <Card className="flex flex-col gap-4" aria-labelledby="result-heading" data-testid="result-card">
+    <Card tabIndex={-1} className="flex flex-col gap-4 outline-none" aria-labelledby="result-heading" data-testid="result-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="result-heading" className="text-lg font-semibold">
           Result
