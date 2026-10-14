@@ -68,7 +68,7 @@ export default function HomePage() {
   const limits = useMemo(() => getLimits(), []);
 
   useEffect(() => {
-    document.title = 'Media Toolkit — Make your media work for you';
+    document.title = 'Media Toolkit — Image & Video Tools';
   }, []);
   useEffect(() => {
     if (detected) choiceRef.current?.focus({ preventScroll: true });
@@ -110,25 +110,13 @@ export default function HomePage() {
 
   return (
     <div className="home-page mx-auto w-full max-w-6xl px-4 sm:px-6">
-      <section className="home-intro text-center">
-        <p className="eyebrow">
-          <span className="size-1.5 rounded-full bg-accent" /> A LITTLE LESS WORK. A LOT MORE DONE.
-        </p>
-        <h1>
-          {detected ? (
-            'Your file. Your next move.'
-          ) : (
-            <>
-              Make your media
-              <br />
-              <span className="text-accent">work for you.</span>
-            </>
-          )}
-        </h1>
-        <p className="mx-auto max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+      <section className="home-intro">
+        <p className="home-step-label">Step {detected ? '2' : '1'} of 3</p>
+        <h1>{detected ? 'Choose an action for your file' : 'Upload an image or video'}</h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
           {detected
-            ? 'Choose what you want to do. We’ll take it from here.'
-            : 'Convert, compress, and edit in a few clicks. Start with an image or video — we’ll show you the rest.'}
+            ? 'Select a tool below, adjust its settings, then download your finished file.'
+            : 'Start with a file. Then choose to convert, compress, resize, or edit it.'}
         </p>
       </section>
       <div className="mx-auto max-w-4xl">
@@ -140,7 +128,7 @@ export default function HomePage() {
           {!detected ? (
             <>
               <div className="workspace-caption">
-                <span>YOUR NEXT GREAT FILE STARTS HERE</span>
+                <span>Select a file to get started</span>
                 <LockKeyhole className="size-4" aria-label="Private processing" />
               </div>
               <UploadZone

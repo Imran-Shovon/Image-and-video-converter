@@ -84,31 +84,26 @@ body {
   outline-offset: 2px;
 }
 
-.home-page {
-  background-image: radial-gradient(
-    ellipse at 50% 20%,
-    color-mix(in srgb, var(--accent-soft) 60%, transparent),
-    transparent 65%
-  );
-}
 .home-intro {
-  padding: 58px 0 34px;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 36px 0 24px;
 }
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
+.home-step-label {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.15em;
-  color: var(--muted);
 }
 .home-intro h1 {
-  margin: 18px 0;
-  font-size: clamp(36px, 5vw, 62px);
+  margin: 12px 0 8px;
+  font-size: clamp(27px, 3vw, 36px);
   font-weight: 650;
-  line-height: 1.08;
-  letter-spacing: -0.055em;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
 }
 .workflow-steps {
   display: flex;
@@ -167,9 +162,8 @@ body {
   justify-content: space-between;
   margin: 0 2px 18px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.1em;
 }
 .upload-zone-main {
   min-height: 300px;
@@ -287,11 +281,7 @@ body {
 }
 @media (max-width: 639px) {
   .home-intro {
-    padding: 36px 0 28px;
-  }
-  .eyebrow {
-    font-size: 9px;
-    letter-spacing: 0.09em;
+    padding: 24px 0 20px;
   }
   .upload-workspace {
     padding: 14px;
