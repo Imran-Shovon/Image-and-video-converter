@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Archive, Download, RotateCcw, Trash, X } from 'lucide-react';
 import type { ToolInfo } from '@/features/tools';
 import { buildZip, downloadBlob } from '@/lib/download';
@@ -8,7 +8,7 @@ import { ERROR_COPY, toMediaError, type MediaError } from '@/lib/media/errors';
 import { FORMATS } from '@/lib/media/formats';
 import { getLimits } from '@/lib/media/limits';
 import { formatBytes, sizeChange } from '@/lib/media/sizes';
-import { useHandoff } from '@/stores/handoff';
+import { useFileHandoff } from '@/hooks/useFileHandoff';
 import { Alert, Badge, Button, Card } from '@/components/ui/primitives';
 import { CompareSlider } from '@/components/tool/CompareSlider';
 import { ErrorAlert } from '@/components/tool/ErrorAlert';
@@ -61,14 +61,10 @@ export function ImageToolShell({ tool, operation, multiple = false, actionLabel,
   const queue = useImageQueue({ multiple, operation });
   const { items, add } = queue;
   const accept = useMemo(() => acceptedImageFormats(), []);
-  const take = useHandoff((s) => s.take);
   const [zipError, setZipError] = useState<MediaError | null>(null);
   const [zipping, setZipping] = useState(false);
 
-  useEffect(() => {
-    const handed = take();
-    if (handed) add([handed]);
-  }, [add, take]);
+  useFileHandoff(add);
 
   const ready = items.filter((it) => it.probe);
   const firstProbe = ready[0]?.probe;
@@ -122,7 +118,7 @@ export function ImageToolShell({ tool, operation, multiple = false, actionLabel,
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : items.length > 0 ? 2 : 1} sourceFile={items[0]?.file}>
       {queue.notice && <ErrorAlert error={queue.notice} />}
       {items.length === 0 && <UploadZone accept={accept} multiple={multiple} onFiles={add} allowPaste />}
 

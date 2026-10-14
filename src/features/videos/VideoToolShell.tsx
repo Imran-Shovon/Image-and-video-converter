@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Archive, Download, RotateCcw, Trash, X } from 'lucide-react';
 import type { ToolInfo } from '@/features/tools';
 import { buildZip, downloadBlob } from '@/lib/download';
@@ -9,7 +9,7 @@ import { getLimits } from '@/lib/media/limits';
 import { formatBytes, formatDuration, sizeChange } from '@/lib/media/sizes';
 import type { EnginePreference } from '@/lib/video-processing/engine';
 import type { VideoJob, VideoProbe, VideoProgress } from '@/lib/video-processing/types';
-import { useHandoff } from '@/stores/handoff';
+import { useFileHandoff } from '@/hooks/useFileHandoff';
 import { Alert, Badge, Button, Card, Select } from '@/components/ui/primitives';
 import { ErrorAlert } from '@/components/tool/ErrorAlert';
 import { FileInfo, type InfoRow } from '@/components/tool/FileInfo';
@@ -109,13 +109,9 @@ export function VideoToolShell(props: VideoToolShellProps) {
   const queue = useVideoQueue({ multiple, operation, needsPreview, extraAccept });
   const { items, add } = queue;
   const accept = useMemo(() => [...acceptedVideoFormats(), ...(extraAccept ?? [])], [extraAccept]);
-  const take = useHandoff((s) => s.take);
   const [zipError, setZipError] = useState<MediaError | null>(null);
 
-  useEffect(() => {
-    const handed = take();
-    if (handed) add([handed]);
-  }, [add, take]);
+  useFileHandoff(add);
 
   const processing = items.some((it) => it.status === 'processing');
   const runnable = items.filter((it) => it.probe && !itemError?.(it));
@@ -162,7 +158,7 @@ export function VideoToolShell(props: VideoToolShellProps) {
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={done.length > 0 ? 3 : items.length > 0 ? 2 : 1} sourceFile={items[0]?.file}>
       {queue.notice && <ErrorAlert error={queue.notice} />}
       {items.length === 0 && <UploadZone accept={accept} multiple={multiple} onFiles={add} title={multiple ? 'Drop videos here' : 'Drop a video here'} />}
 

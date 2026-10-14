@@ -1,210 +1,281 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Lock, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
-import { availableTools, toolsForKind, type ToolInfo } from '@/features/tools';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  acceptedImageFormats,
-  acceptedVideoFormats,
-  advertisedAudioOutputs,
-  advertisedImageInputs,
-  advertisedImageOutputs,
-  advertisedVideoInputs,
-  advertisedVideoOutputs,
-} from '@/lib/media/capabilities';
+  ArrowRight,
+  Check,
+  Image as ImageIcon,
+  Film,
+  LockKeyhole,
+  RotateCcw,
+  ShieldCheck,
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { toolsForKind, type ToolInfo } from '@/features/tools';
+import { acceptedImageFormats, acceptedVideoFormats } from '@/lib/media/capabilities';
 import { toMediaError, type MediaError } from '@/lib/media/errors';
-import { FORMATS, type FormatId } from '@/lib/media/formats';
+import { FORMATS } from '@/lib/media/formats';
 import { getLimits } from '@/lib/media/limits';
 import { formatBytes } from '@/lib/media/sizes';
 import { validateFile, type ValidatedFile } from '@/lib/media/validate';
 import { useHandoff } from '@/stores/handoff';
-import { Badge, Card } from '@/components/ui/primitives';
+import { Button } from '@/components/ui/primitives';
 import { ErrorAlert } from '@/components/tool/ErrorAlert';
 import { UploadZone } from '@/components/tool/UploadZone';
+import { WorkflowSteps } from '@/components/tool/WorkflowSteps';
 
-function ToolCard({ tool, onClick }: { tool: ToolInfo; onClick?: () => void }) {
-  const content = (
-    <>
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-        <tool.icon className="size-5" aria-hidden />
-      </span>
-      <span className="flex min-w-0 flex-col">
-        <span className="font-semibold">{tool.title}</span>
-        <span className="text-sm text-muted">{tool.short}</span>
-      </span>
-      <ArrowRight className="ml-auto size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
-    </>
-  );
-  const cls = 'group flex min-h-11 items-center gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-accent/60 hover:bg-surface-2';
-  return onClick ? (
-    <button type="button" onClick={onClick} className={cls}>
-      {content}
-    </button>
-  ) : (
-    <Link to={tool.path} className={cls}>
-      {content}
-    </Link>
+function FilePreview({ media }: { media: ValidatedFile }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const next = URL.createObjectURL(media.file);
+    (imageRef.current ?? videoRef.current)?.setAttribute('src', next);
+    return () => URL.revokeObjectURL(next);
+  }, [media.file]);
+  const Icon = media.kind === 'image' ? ImageIcon : Film;
+  return (
+    <div className="file-preview checkerboard">
+      {failed ? (
+        <div className="flex flex-col items-center gap-3 p-6 text-center text-muted">
+          <Icon className="size-10" aria-hidden />
+          <p className="text-sm">Preview unavailable. Your file is ready to edit.</p>
+        </div>
+      ) : media.kind === 'image' ? (
+        <img ref={imageRef} alt={`Preview of ${media.file.name}`} onError={() => setFailed(true)} />
+      ) : (
+        <video
+          ref={videoRef}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={`Preview of ${media.file.name}`}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
   );
 }
-
-const unique = (ids: FormatId[]) => [...new Set(ids.map((id) => FORMATS[id].label))];
 
 export default function HomePage() {
   const navigate = useNavigate();
   const give = useHandoff((s) => s.give);
+  const take = useHandoff((s) => s.take);
   const [detected, setDetected] = useState<ValidatedFile | null>(null);
   const [error, setError] = useState<MediaError | null>(null);
-  const tools = availableTools();
-  const limits = getLimits();
+  const [checking, setChecking] = useState(false);
+  const request = useRef(0);
+  const choiceRef = useRef<HTMLHeadingElement>(null);
   const accept = useMemo(() => [...acceptedImageFormats(), ...acceptedVideoFormats()], []);
+  const limits = useMemo(() => getLimits(), []);
 
   useEffect(() => {
-    document.title = 'Media Toolkit — Image & Video Converter, Compressor and Editor';
+    document.title = 'Media Toolkit — Make your media work for you';
   }, []);
+  useEffect(() => {
+    if (detected) choiceRef.current?.focus({ preventScroll: true });
+  }, [detected]);
 
   const onFiles = async (files: File[]) => {
+    if (!files[0]) return;
+    const id = ++request.current;
     setError(null);
-    setDetected(null);
+    setChecking(true);
     try {
-      setDetected(await validateFile(files[0]!, { accept, limits }));
+      const media = await validateFile(files[0], { accept, limits });
+      if (id === request.current) setDetected(media);
     } catch (e) {
-      setError(toMediaError(e));
+      if (id === request.current) setError(toMediaError(e));
+    } finally {
+      if (id === request.current) setChecking(false);
     }
   };
 
+  useEffect(() => {
+    const file = take();
+    if (!file) return;
+    const id = ++request.current;
+    void validateFile(file, { accept, limits })
+      .then((media) => {
+        if (id === request.current) setDetected(media);
+      })
+      .catch((e: unknown) => {
+        if (id === request.current) setError(toMediaError(e));
+      });
+  }, [accept, limits, take]);
+
   const openWith = (tool: ToolInfo) => {
-    if (detected) give(detected.file, 'home');
+    if (!detected) return;
+    give(detected.file, 'home');
     navigate(tool.path);
   };
 
-  const suggestions = detected ? toolsForKind(detected.kind) : [];
-  const faq = [
-    {
-      q: 'Are my files uploaded anywhere?',
-      a: 'No. Every tool runs inside your browser using WebAssembly and your device’s built-in encoders. Files never leave your device, and nothing is stored after you close the tab.',
-    },
-    {
-      q: 'Which formats are supported?',
-      a: `Images: ${unique(advertisedImageInputs().map((c) => c.format)).join(', ')} in; ${unique(advertisedImageOutputs().map((c) => c.format)).join(', ')} out. Videos: ${unique(
-        advertisedVideoInputs().map((c) => c.format),
-      ).join(', ')} in; ${advertisedVideoOutputs()
-        .map((c) => c.label)
-        .join(', ')} out. Audio: ${unique(advertisedAudioOutputs().map((c) => c.format)).join(', ')}.`,
-    },
-    {
-      q: 'How large can files be?',
-      a: `On this device: images up to ${formatBytes(limits.imageBytes)} and ${(limits.imagePixels / 1e6).toFixed(0)} megapixels; videos up to ${formatBytes(limits.videoBytes)} and ${Math.round(
-        limits.videoSeconds / 60,
-      )} minutes. Phones and tablets have lower limits because they have less memory.`,
-    },
-    {
-      q: 'Why is video processing slower than desktop apps?',
-      a: 'Video encoding runs in WebAssembly inside your browser, which is several times slower than native software. Where your browser supports hardware encoding (WebCodecs), it is used automatically.',
-    },
-    {
-      q: 'Is my photo’s location data kept?',
-      a: 'No. Metadata such as GPS location and camera details is removed when an image is re-encoded, which protects your privacy.',
-    },
-  ];
-
   return (
-    <div className="flex flex-col gap-16 pb-8">
-      <section className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
-          <div className="flex max-w-3xl flex-col gap-4">
-            <Badge tone="success" className="w-fit">
-              <ShieldCheck className="size-3.5" aria-hidden /> Private by design — nothing is uploaded
-            </Badge>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Convert, compress and edit images & videos in your browser</h1>
-            <p className="text-lg text-muted">
-              Fast, free tools for everyday media tasks. Drop a file to get started — we’ll suggest the right tool.
-            </p>
-          </div>
-          <UploadZone accept={accept} onFiles={onFiles} title="Drop an image or video" allowPaste />
-          {error && <ErrorAlert error={error} />}
-          {detected && (
-            <Card className="flex flex-col gap-3" aria-live="polite">
-              <p className="font-semibold">
-                {detected.file.name} — {FORMATS[detected.format].label} {detected.kind}, {formatBytes(detected.file.size)}. What would you like to do?
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {suggestions.map((t) => (
-                  <ToolCard key={t.id} tool={t} onClick={() => openWith(t)} />
-                ))}
-              </div>
-            </Card>
+    <div className="home-page mx-auto w-full max-w-6xl px-4 sm:px-6">
+      <section className="home-intro text-center">
+        <p className="eyebrow">
+          <span className="size-1.5 rounded-full bg-accent" /> A LITTLE LESS WORK. A LOT MORE DONE.
+        </p>
+        <h1>
+          {detected ? (
+            'Your file. Your next move.'
+          ) : (
+            <>
+              Make your media
+              <br />
+              <span className="text-accent">work for you.</span>
+            </>
           )}
-        </div>
-      </section>
-
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 sm:px-6" aria-labelledby="popular">
-        <h2 id="popular" className="text-2xl font-bold tracking-tight">
-          Popular tools
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {tools
-            .filter((t) => t.popular)
-            .map((t) => (
-              <ToolCard key={t.id} tool={t} />
-            ))}
-        </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-2">
-        {(['image', 'video'] as const).map((kind) => (
-          <div key={kind} className="flex flex-col gap-4" aria-labelledby={`${kind}-tools`}>
-            <h2 id={`${kind}-tools`} className="text-2xl font-bold tracking-tight">
-              {kind === 'image' ? 'Image tools' : 'Video tools'}
-            </h2>
-            <div className="grid gap-3">
-              {tools
-                .filter((t) => t.kind === kind)
-                .map((t) => (
-                  <ToolCard key={t.id} tool={t} />
-                ))}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4" aria-label="Features">
-        {[
-          { icon: Lock, title: 'Private', text: 'Processing happens on your device. No uploads, no accounts, no tracking.' },
-          { icon: Zap, title: 'Fast', text: 'Hardware-accelerated video encoding where your browser supports it.' },
-          { icon: Sparkles, title: 'Easy', text: 'Sensible presets, live previews and before/after comparison.' },
-          {
-            icon: ShieldCheck,
-            title: 'Honest results',
-            text: 'Every output is verified before download, and real sizes are always shown.',
-          },
-        ].map((f) => (
-          <Card key={f.title} as="div" className="flex flex-col gap-2">
-            <f.icon className="size-6 text-accent" aria-hidden />
-            <h3 className="font-semibold">{f.title}</h3>
-            <p className="text-sm text-muted">{f.text}</p>
-          </Card>
-        ))}
-      </section>
-
-      <section className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 sm:px-6" aria-labelledby="faq">
-        <h2 id="faq" className="text-2xl font-bold tracking-tight">
-          Frequently asked questions
-        </h2>
-        <div className="flex flex-col gap-2">
-          {faq.map((item) => (
-            <details key={item.q} className="group rounded-xl border border-border bg-surface p-4">
-              <summary className="flex min-h-6 cursor-pointer items-center justify-between font-medium">{item.q}</summary>
-              <p className="mt-2 text-sm text-muted">{item.a}</p>
-            </details>
-          ))}
-        </div>
-        <p className="text-sm text-muted">
-          See the full list of <Link to="/formats" className="text-accent underline underline-offset-2">supported formats</Link> and{' '}
-          <Link to="/browser-support" className="text-accent underline underline-offset-2">
-            browser limitations
-          </Link>
-          .
+        </h1>
+        <p className="mx-auto max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+          {detected
+            ? 'Choose what you want to do. We’ll take it from here.'
+            : 'Convert, compress, and edit in a few clicks. Start with an image or video — we’ll show you the rest.'}
         </p>
       </section>
+      <div className="mx-auto max-w-4xl">
+        <WorkflowSteps current={detected ? 2 : 1} />
+        <section
+          className="upload-workspace"
+          aria-label={detected ? 'Choose an action for your file' : 'Upload your media'}
+        >
+          {!detected ? (
+            <>
+              <div className="workspace-caption">
+                <span>YOUR NEXT GREAT FILE STARTS HERE</span>
+                <LockKeyhole className="size-4" aria-label="Private processing" />
+              </div>
+              <UploadZone
+                accept={accept}
+                onFiles={onFiles}
+                title={checking ? 'Checking your file…' : 'Drop your image or video here'}
+                allowPaste
+                disabled={checking}
+                simplified
+              />
+              <div className="upload-limits">
+                <span>Images up to {formatBytes(limits.imageBytes)}</span>
+                <span>Videos up to {formatBytes(limits.videoBytes)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="selected-workspace">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-5">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-success">
+                  <Check className="size-4" aria-hidden /> File ready
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<RotateCcw className="size-4" aria-hidden />}
+                  onClick={() => {
+                    ++request.current;
+                    setDetected(null);
+                    setError(null);
+                    setChecking(false);
+                  }}
+                >
+                  Choose another file
+                </Button>
+              </div>
+              <div className="mt-6 grid gap-7 md:grid-cols-[240px_minmax(0,1fr)]">
+                <div className="min-w-0">
+                  <FilePreview media={detected} />
+                  <p className="mt-4 break-all text-sm font-semibold">{detected.file.name}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {FORMATS[detected.format].label} {detected.kind},{' '}
+                    {formatBytes(detected.file.size)}
+                  </p>
+                  {detected.header && (
+                    <p className="mt-1 text-xs text-muted">
+                      {detected.header.width} × {detected.header.height} px
+                    </p>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h2
+                    ref={choiceRef}
+                    tabIndex={-1}
+                    className="mb-1 text-xl font-semibold tracking-tight outline-none"
+                  >
+                    What would you like to do?
+                  </h2>
+                  <p className="mb-5 text-sm text-muted">Choose an action to see its settings.</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {toolsForKind(detected.kind).map((tool) => (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        onClick={() => openWith(tool)}
+                        className="action-tile group"
+                      >
+                        <tool.icon className="size-5 shrink-0 text-accent" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">{tool.title}</span>
+                          <span className="mt-1 block text-xs leading-relaxed text-muted">
+                            {tool.short}
+                          </span>
+                        </span>
+                        <ArrowRight
+                          className="ml-auto size-4 shrink-0 text-muted transition-transform group-hover:translate-x-1"
+                          aria-hidden
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+        {error && (
+          <div className="mt-4">
+            <ErrorAlert error={error} />
+          </div>
+        )}
+        {checking && (
+          <p role="status" className="mt-4 text-center text-sm text-muted">
+            Reading your file and finding the available tools…
+          </p>
+        )}
+        <div className="trust-line">
+          <ShieldCheck className="size-4 text-accent" aria-hidden />
+          <span>Your files stay on your device.</span>
+          <span className="hidden sm:inline">No uploads. No sign-ups. Just done.</span>
+        </div>
+      </div>
+      <section
+        className="how-it-works mx-auto grid max-w-4xl gap-6 sm:grid-cols-3"
+        aria-label="How it works"
+      >
+        {[
+          {
+            number: '01',
+            title: 'Start with a file',
+            text: 'Drop an image or video, or choose one from your device.',
+          },
+          {
+            number: '02',
+            title: 'Make it yours',
+            text: 'Pick an action, then adjust the settings to get it just right.',
+          },
+          {
+            number: '03',
+            title: 'Save and go',
+            text: 'Download your finished file. It’s that simple.',
+          },
+        ].map((item) => (
+          <div key={item.number}>
+            <span className="text-xs font-semibold text-accent">{item.number}</span>
+            <h2 className="mt-3 text-sm font-semibold">{item.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{item.text}</p>
+          </div>
+        ))}
+      </section>
+      <p className="pb-8 text-center text-xs text-muted">
+        JPG, PNG, WebP, MP4, MOV, and more.{' '}
+        <Link to="/formats" className="underline underline-offset-4 hover:text-accent">
+          See supported formats
+        </Link>
+      </p>
     </div>
   );
 }

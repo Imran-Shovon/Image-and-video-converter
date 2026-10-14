@@ -9,7 +9,7 @@ import { centeredAspectRect, rotatedBounds } from '@/lib/image-processing/geomet
 import type { ImageOperation, Rect } from '@/lib/image-processing/types';
 import { acceptedImageFormats } from '@/lib/media/capabilities';
 import { FORMATS } from '@/lib/media/formats';
-import { useHandoff } from '@/stores/handoff';
+import { useFileHandoff } from '@/hooks/useFileHandoff';
 import { Alert, Button, Card, NumberInput, Select, Slider } from '@/components/ui/primitives';
 import { Cropper } from '@/components/tool/Cropper';
 import { ErrorAlert } from '@/components/tool/ErrorAlert';
@@ -34,7 +34,6 @@ export default function CropImagePage() {
   const [s, update] = usePersistentSettings('image-crop', DEFAULTS);
   const item = queue.items[0];
   const probe = item?.probe;
-  const take = useHandoff((st) => st.take);
   const { add } = queue;
 
   const [rot90, setRot90] = useState(0);
@@ -46,10 +45,7 @@ export default function CropImagePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sourceBitmap, setSourceBitmap] = useState<ImageBitmap | null>(null);
 
-  useEffect(() => {
-    const handed = take();
-    if (handed) add([handed]);
-  }, [add, take]);
+  useFileHandoff(add);
 
   const degrees = rot90 + fine;
   const frame = useMemo(() => (probe ? rotatedBounds(probe.width, probe.height, degrees) : { width: 1, height: 1 }), [probe, degrees]);
@@ -187,7 +183,7 @@ export default function CropImagePage() {
   );
 
   return (
-    <ToolLayout tool={tool} aside={aside || undefined}>
+    <ToolLayout tool={tool} aside={aside || undefined} step={item?.result ? 3 : item ? 2 : 1} sourceFile={item?.file}>
       {!item && <UploadZone accept={acceptedImageFormats()} onFiles={add} allowPaste />}
       {item && (
         <Card className="flex flex-col gap-4">
