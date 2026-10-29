@@ -1,0 +1,50 @@
+# Added by Redlime Forge. Every push to main is built here on GitHub and
+# deployed to Forge. The build settings are in Forge (the site's dashboard,
+# Settings); delete this file to stop automatic builds.
+name: Forge deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: forge-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: "."
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install
+        run: |
+          npm ci
+      - name: Build
+        run: |
+          npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Send to Forge
+        env:
+          FORGE_DEPLOY_KEY: ${{ secrets.FORGE_DEPLOY_KEY }}
+        run: |
+          if [ ! -f "dist/index.html" ]; then
+            echo "::error::The build didn't write dist/index.html. Check the output folder in Forge (site dashboard, Settings)."
+            exit 1
+          fi
+          (cd "dist" && zip -qr "$RUNNER_TEMP/forge-site.zip" .)
+          curl --fail-with-body -sS -X POST "https://panelapi.redlimesolutions.com/api/deploy/site_01m6389s3h9p5j6b9j0j3zx7gv" -H "Authorization: Bearer $FORGE_DEPLOY_KEY" -H "Accept: application/json" -F "file=@$RUNNER_TEMP/forge-site.zip" --form-string "commit=$GITHUB_SHA" --form-string "branch=$GITHUB_REF_NAME" --form-string "message=$(git log -1 --pretty=%s)" --form-string "run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+      - name: Tell Forge the build failed
+        if: failure()
+        env:
+          FORGE_DEPLOY_KEY: ${{ secrets.FORGE_DEPLOY_KEY }}
+        run: |
+          curl -sS -X POST "https://panelapi.redlimesolutions.com/api/deploy/site_01m6389s3h9p5j6b9j0j3zx7gv" -H "Authorization: Bearer $FORGE_DEPLOY_KEY" -H "Accept: application/json" --form-string "status=failed" --form-string "commit=$GITHUB_SHA" --form-string "branch=$GITHUB_REF_NAME" --form-string "message=$(git log -1 --pretty=%s)" --form-string "run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
